@@ -258,6 +258,7 @@ impl CompiledRuleset {
                     let transformations = extract_transformations(&rule.actions)?;
 
                     report_unimplemented_variables(&rule.variables, &id);
+                    report_invalid_key_regexes(&rule.variables, &id);
 
                     let operator_spec = rule.operator.clone();
                     let operand_unresolvable =
@@ -529,6 +530,14 @@ fn apply_target_updates(ruleset: &mut CompiledRuleset, updates: &[UpdateTargetBy
     if updates.is_empty() {
         return;
     }
+    for update in updates {
+        let ids: Vec<String> = update.ids.iter().map(|id| format!("{id:?}")).collect();
+        let rule = Some(format!("SecRuleUpdateTargetById {}", ids.join(",")));
+        report_invalid_key_regexes(&update.additions, &rule);
+        for exclusion in &update.exclusions {
+            report_invalid_exclusion(&crate::parser::TargetExclusion::parse(exclusion), &rule);
+        }
+    }
     for rules in ruleset.rules.by_phase.values_mut() {
         for rule in rules.iter_mut() {
             let Some(numeric) = rule.id.as_ref().and_then(|s| s.parse::<u64>().ok()) else {
@@ -619,6 +628,84 @@ fn report_unimplemented_variables(variables: &[VariableSpec], rule_id: &Option<S
         "rule targets only variables this engine does not implement and can \
          never match; the rest of the ruleset was loaded"
     );
+}
+
+/// Warn about a key selection whose regular expression does not compile.
+///
+/// It matches no key, as in ModSecurity v3, whose `VariableRegex` and
+/// `KeyExclusionRegex` keep an expression PCRE refused and never find a key
+/// with it. A target (`ARGS:/bad(/`) then inspects nothing, and an exclusion
+/// (`!ARGS:/bad(/`) leaves nothing out: worth saying at load rather than
+/// leaving to be inferred from traffic.
+fn report_invalid_key_regexes(variables: &[VariableSpec], rule_id: &Option<String>) {
+    let mut reported = std::collections::BTreeSet::new();
+    for var in variables {
+        if let Some(Selection::Regex(re)) = &var.selection {
+            if let Some(error) = re.error() {
+                tracing::warn!(
+                    rule_id = %rule_id.as_deref().unwrap_or("(no id)"),
+                    target = ?var.name,
+                    expression = %re.as_str(),
+                    error = %error,
+                    "rule selects keys with a regular expression that does not \
+                     compile; this target inspects nothing"
+                );
+            }
+        }
+        for exclusion in &var.exclusions {
+            if reported.insert(exclusion.text.as_str()) {
+                report_invalid_exclusion(exclusion, rule_id);
+            }
+        }
+    }
+}
+
+/// Warn about an exclusion whose regular expression does not compile: it
+/// leaves nothing out ([`report_invalid_key_regexes`]).
+fn report_invalid_exclusion(exclusion: &crate::parser::TargetExclusion, rule_id: &Option<String>) {
+    if let Some(error) = exclusion.key_regex().and_then(|re| re.error()) {
+        tracing::warn!(
+            rule_id = %rule_id.as_deref().unwrap_or("(no id)"),
+            exclusion = %exclusion.text,
+            error = %error,
+            "rule excludes keys with a regular expression that does not \
+             compile; the exclusion leaves nothing out"
+        );
+    }
+}
+
+/// The `ctl:ruleRemoveTargetById` / `ctl:ruleRemoveTargetByTag` actions whose
+/// target selects keys with a regular expression that does not compile, as
+/// `directive=selector;target` with the expression's error.
+fn invalid_control_target_regexes(actions: &[crate::parser::Action]) -> Vec<(String, String)> {
+    use super::control::CtlDirective;
+    let mut found = Vec::new();
+    for action in actions {
+        let crate::parser::Action::Control(ctl) = action else {
+            continue;
+        };
+        let (directive, selector, target) = match CtlDirective::parse(ctl) {
+            CtlDirective::RuleRemoveTargetById { rule_id, target } => {
+                ("ruleRemoveTargetById", rule_id, target)
+            }
+            CtlDirective::RuleRemoveTargetByTag { tag, target } => {
+                ("ruleRemoveTargetByTag", tag, target)
+            }
+            _ => continue,
+        };
+        let Ok(spec) = crate::parser::parse_single_variable(&target) else {
+            continue;
+        };
+        if let Some(Selection::Regex(re)) = &spec.selection {
+            if let Some(error) = re.error() {
+                found.push((
+                    format!("{directive}={selector};{target}"),
+                    error.to_string(),
+                ));
+            }
+        }
+    }
+    found
 }
 
 /// Warn about `XML:` targets that name an XPath expression this engine cannot
@@ -729,6 +816,8 @@ fn report_unresolvable_operands(seen: &BTreeMap<String, usize>) {
 fn report_unsupported_controls(directives: &[Directive]) {
     let mut seen: std::collections::BTreeMap<String, (&'static str, usize)> =
         std::collections::BTreeMap::new();
+    let mut invalid_targets: std::collections::BTreeMap<String, (String, usize)> =
+        std::collections::BTreeMap::new();
 
     for directive in directives {
         let actions = match directive {
@@ -745,6 +834,20 @@ fn report_unsupported_controls(directives: &[Directive]) {
             let entry = seen.entry(key).or_insert((reason, 0));
             entry.1 += 1;
         }
+        for (spec, error) in invalid_control_target_regexes(actions) {
+            let entry = invalid_targets.entry(spec).or_insert((error, 0));
+            entry.1 += 1;
+        }
+    }
+
+    for (spec, (error, count)) in invalid_targets {
+        tracing::warn!(
+            directive = %spec,
+            rules_affected = count,
+            error = %error,
+            "ctl: target exclusion selects keys with a regular expression that \
+             does not compile and will leave nothing out"
+        );
     }
 
     for (spec, (reason, count)) in seen {

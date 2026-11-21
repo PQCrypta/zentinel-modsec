@@ -5,8 +5,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, RwLock};
 
-/// A compiled expression, or `None` for one that does not compile.
-type Compiled = Option<Arc<regex::bytes::Regex>>;
+/// A compiled expression, or why it does not compile.
+type Compiled = Result<Arc<regex::bytes::Regex>, Arc<str>>;
 
 /// A key selection's regular expression, compiled when the rule text is read.
 ///
@@ -27,8 +27,9 @@ type Compiled = Option<Arc<regex::bytes::Regex>>;
 #[derive(Clone)]
 pub struct KeyRegex {
     source: Arc<str>,
-    /// `None` when the expression does not compile: it then matches nothing,
-    /// which is how an invalid selection has always behaved.
+    /// Why the expression does not compile, for one that does not: it then
+    /// matches nothing, as ModSecurity v3's `VariableRegex` matches nothing
+    /// with an expression PCRE refused. The rule set reports it at load.
     compiled: Compiled,
 }
 
@@ -52,8 +53,8 @@ impl KeyRegex {
             .case_insensitive(true)
             .unicode(false)
             .build()
-            .ok()
-            .map(Arc::new);
+            .map(Arc::new)
+            .map_err(|error| Arc::from(error.to_string()));
         let source: Arc<str> = Arc::from(source);
         COMPILED
             .write()
@@ -68,11 +69,17 @@ impl KeyRegex {
         &self.source
     }
 
+    /// Why the expression does not compile, or `None` when it does. One that
+    /// does not compile matches no key.
+    pub fn error(&self) -> Option<&str> {
+        self.compiled.as_ref().err().map(|error| &**error)
+    }
+
     /// Whether the expression finds `key`, read as its UTF-8 bytes.
     pub fn is_match(&self, key: &str) -> bool {
         self.compiled
             .as_ref()
-            .is_some_and(|re| re.is_match(key.as_bytes()))
+            .is_ok_and(|re| re.is_match(key.as_bytes()))
     }
 }
 
@@ -126,5 +133,7 @@ mod tests {
         let bad = KeyRegex::new("(unclosed");
         assert!(!bad.is_match("(unclosed") && !bad.is_match(""));
         assert_eq!(bad.as_str(), "(unclosed");
+        assert!(bad.error().is_some_and(|e| e.contains("unclosed group")));
+        assert_eq!(a.error(), None);
     }
 }

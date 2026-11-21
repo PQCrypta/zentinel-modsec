@@ -9,6 +9,16 @@ pins (see [`docs/conformance.md`](docs/conformance.md)).
 
 ## [Unreleased]
 
+### Added
+
+- A key selection whose regular expression does not compile is reported at
+  load, naming the rule and the expression: a rule's target (`ARGS:/bad(/`,
+  which then inspects nothing) or exclusion (`!ARGS:/bad(/`, which then leaves
+  nothing out), a `SecRuleUpdateTargetById` target, or a
+  `ctl:ruleRemoveTargetById` / `ctl:ruleRemoveTargetByTag` target (once per
+  distinct directive). It still matches no key, as in ModSecurity v3.
+  `KeyRegex::error` gives the reason. (#115)
+
 ### Performance
 
 - Evaluating a rule no longer copies the values of its targets into one list
