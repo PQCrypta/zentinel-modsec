@@ -1,11 +1,15 @@
-//! Pure Rust implementation of libinjection for SQLi and XSS detection.
+//! Pure Rust port of libinjection v4.0.2 for SQLi and XSS detection.
 //!
-//! This module provides SQL injection and XSS detection using fingerprint-based
-//! analysis, similar to the original libinjection library.
+//! `sqli` ports `libinjection_sqli.c` and `xss` ports `libinjection_xss.c` with
+//! the HTML5 tokenizer it runs on (`html5`, from `libinjection_html5.c`). The
+//! static tables (`sqli_data`, `xss_data`) are generated from the C sources by
+//! the scripts in `scripts/`.
 
+mod html5;
 pub mod sqli;
 mod sqli_data;
 pub mod xss;
+mod xss_data;
 
 pub use sqli::{is_sqli, sqli_fingerprint};
 pub use xss::is_xss;
@@ -54,7 +58,8 @@ mod tests {
     #[test]
     fn test_xss_detection() {
         assert!(is_xss("<script>alert(1)</script>"));
-        assert!(is_xss("javascript:alert(1)"));
+        // libinjection tokenizes HTML; a bare URL is not XSS.
+        assert!(!is_xss("javascript:alert(1)"));
         assert!(is_xss("<img src=x onerror=alert(1)>"));
         assert!(is_xss("<svg onload=alert(1)>"));
         assert!(!is_xss("hello world"));

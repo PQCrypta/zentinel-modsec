@@ -66,7 +66,8 @@ use zentinel_modsec::ModSecurity;
 /// change after bumping that commit is worth reading as new tests before
 /// reading it as a regression.
 /// 4969: regex selections compare keys case-insensitively (922110, 17 cases).
-const MIN_PASSING: u32 = 4969;
+/// 4971: `@detectXSS` ported from libinjection (941100 tests 2 and 3).
+const MIN_PASSING: u32 = 4971;
 
 /// Corpus stages that cannot be driven from here: an `encoded_request` payload,
 /// or an expectation that is not about rule IDs (`status`, `match_regex`).

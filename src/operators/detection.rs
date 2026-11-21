@@ -28,9 +28,10 @@ pub struct DetectXssOperator;
 
 impl Operator for DetectXssOperator {
     fn execute(&self, value: &str) -> OperatorResult {
-        let result = libinjection::xss::detect_xss(value);
-        if result.is_injection {
-            OperatorResult::matched(result.fingerprint.unwrap_or_default())
+        // libinjection has no XSS fingerprint; ModSecurity reports the whole
+        // input as the match (`detect_xss.cc` stores it as TX.0).
+        if libinjection::xss::is_xss(value) {
+            OperatorResult::matched(value.to_string())
         } else {
             OperatorResult::no_match()
         }

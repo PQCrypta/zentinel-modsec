@@ -9,6 +9,28 @@ pins (see [`docs/conformance.md`](docs/conformance.md)).
 
 ## [Unreleased]
 
+CRS conformance: 4,969 to 4,971 of 5,184 runnable cases.
+
+### Behavior changes
+
+- **`@detectXSS` gives libinjection's verdict.** It used to be a set of
+  regular expressions and keyword lists. Those flagged text that libinjection
+  clears, such as `online=1`, `javascript:alert(1)` without a tag, or
+  `document.cookie`, and missed what libinjection flags, such as
+  `<div style=...>`, `<!DOCTYPE`, `xmlns:` attributes or `<x:script>`. It is
+  now a port of libinjection v4.0.2's XSS detector and the HTML5 tokenizer it
+  runs on, so the verdict matches C libinjection. Some inputs that matched
+  before no longer do, and some that did not now do. A match reports the whole
+  input (`TX:0` with `capture`), as ModSecurity v3 does, rather than a label.
+  CRS 941100 tests 2 and 3 now pass. (#105)
+
+### Performance
+
+- `@detectXSS` takes about a third of the time per call on a mixed corpus of
+  CRS payloads, libinjection test data and ordinary values (about 230 ns
+  against 660 ns). Input with neither `<` nor `=` cannot be XSS for
+  libinjection and returns at once. (#105)
+
 ## [0.10.0] - 2026-11-21
 
 ### Behavior changes

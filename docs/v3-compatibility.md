@@ -56,7 +56,7 @@ closed). A new divergence gets a row in the change that introduces it.
 | `@verifyCC`, `@verifySSN`, `@verifyCPF`, `@validateHash`, `@validateDTD`, `@validateSchema`, `@rbl`, `@geoLookup`, `@gsbLookup`, `@inspectFile`, `@fuzzyHash`, `@rsub` | Parse, never match. | Implemented (some need build options or external data). | Gap |
 | Invalid `@rx` pattern | Rule never matches, with a warning; a `!` on it is dropped so it cannot match everything. | Load error (`Rx::init` in `operators/rx.cc`). | Deliberate: `regex` rejects some valid PCRE (lookaround, backreferences), and refusing the whole ruleset for one such rule would leave nothing loaded |
 | `@detectSQLi` | Pure Rust port of libinjection v4.0.2 (`src/libinjection/sqli.rs`), with the same verdict and fingerprint (#84). Assumes signed `char`, as on x86-64. | C libinjection v4.0.2 (the `others/libinjection` submodule on `v3/master`), through `libinjection_sqli` (`operators/detect_sqli.cc`). | Matches |
-| `@detectXSS` | Regex and heuristic approximation of libinjection (`src/libinjection/xss.rs`), not a port. | C libinjection v4.0.2, `libinjection_xss` (`operators/detect_xss.cc`). | Gap: verdicts can differ in both directions until it is ported like `@detectSQLi` |
+| `@detectXSS` | Pure Rust port of libinjection v4.0.2 (`src/libinjection/xss.rs`, with its HTML5 tokenizer in `html5.rs`), with the same verdict. libinjection has no XSS fingerprint, so the match (`TX:0` with `capture`) is the whole input, as v3 stores it. | C libinjection v4.0.2, `libinjection_xss` (`operators/detect_xss.cc`). | Matches |
 
 ### Actions and `ctl:`
 
