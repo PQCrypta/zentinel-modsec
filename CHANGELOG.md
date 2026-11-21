@@ -9,6 +9,8 @@ pins (see [`docs/conformance.md`](docs/conformance.md)).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-21
+
 ### Behavior changes
 
 - **Regex key selections fold ASCII only and match keys as bytes**, as
@@ -224,7 +226,8 @@ upgrading.
 0.1.2 through 0.6.0 are tagged in Git (`v0.1.2` ... `v0.6.0`); see the tags
 and the commit history for what each contains.
 
-[Unreleased]: https://github.com/zentinelproxy/zentinel-modsec/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/zentinelproxy/zentinel-modsec/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/zentinelproxy/zentinel-modsec/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/zentinelproxy/zentinel-modsec/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/zentinelproxy/zentinel-modsec/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/zentinelproxy/zentinel-modsec/compare/v0.7.0...v0.8.0
