@@ -9,9 +9,17 @@ pins (see [`docs/conformance.md`](docs/conformance.md)).
 
 ## [Unreleased]
 
-CRS conformance: 4,969 to 4,971 of 5,184 runnable cases.
+CRS conformance: 4,969 to 4,975 of 5,184 runnable cases.
 
 ### Behavior changes
+
+- **`multiMatch` runs the operator at every stage of the transformation
+  pipeline**, as ModSecurity does: on the value before any transformation and
+  after each transformation that changed it. It was parsed and ignored, so the
+  operator saw only the last stage. CRS 930110 finds `..\` before `t:cmdLine`
+  removes the backslash, and 934100 finds `new Function (` before
+  `t:base64Decode` turns it into bytes. The flag is
+  collected at load (`CompiledRule::multi_match`, a new public field).
 
 - **`@detectXSS` gives libinjection's verdict.** It used to be a set of
   regular expressions and keyword lists. Those flagged text that libinjection
