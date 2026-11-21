@@ -25,6 +25,10 @@ pins (see [`docs/conformance.md`](docs/conformance.md)).
   matcher's scratch space again: once per cookie for each CRS rule excluding
   `/__utm/`, and once per argument for each regex exclusion.
 
+- What a match does (`setvar`, `ctl:`, flow and disruptive action) is
+  worked out per rule at load and read in place, and a `setvar` no longer
+  copies its collection, name and operation before it is applied. (#103)
+
 ### API changes
 
 - `Selection::Regex` holds a `KeyRegex` (compiled), not the pattern text;
@@ -33,6 +37,8 @@ pins (see [`docs/conformance.md`](docs/conformance.md)).
   `Vec<String>`; `TargetExclusion::text` gives the text.
 - `Collection::get_regex`, `HashMapCollection::iter_regex` and
   `TxCollection::iter_regex` take a `&KeyRegex`.
+- `CompiledRule` gains a public `on_match` field (the prepared result of its
+  actions), which breaks code that builds one with a struct literal. (#103)
 
 ## [0.9.0] - 2026-11-21
 
