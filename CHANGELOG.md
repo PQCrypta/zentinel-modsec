@@ -39,6 +39,20 @@ CRS conformance: 4,969 to 4,975 of 5,184 runnable cases.
   against 660 ns). Input with neither `<` nor `=` cannot be XSS for
   libinjection and returns at once. (#105)
 
+### Fixed
+
+- **An operator argument with a macro that does not compile after expansion
+  no longer ends the phase.** `@rx %{request_headers.x}` with a value that is
+  not a valid pattern returned an error, and the rules after it in the phase
+  did not run. As in ModSecurity v3 (`operators/rx.cc`), it is now neither a
+  match nor a mismatch: the rule does not fire, negated or not, and evaluation
+  continues.
+- **`!@rx %{...}` keeps its negation.** The argument was also compiled once as
+  written at load; `%{...}` is often not a valid pattern, so the rule was
+  treated like an invalid fixed pattern, which drops the negation and logs an
+  error. The expanded pattern then ran without it. Arguments with a macro are
+  no longer judged at load.
+
 ## [0.10.0] - 2026-11-21
 
 ### Behavior changes

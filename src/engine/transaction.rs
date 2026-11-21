@@ -945,12 +945,32 @@ impl Transaction {
         let dynamic_operator;
         let operator: &dyn Operator = if !rule.operand_unresolvable && rule.operand_has_macro {
             let expanded = self.expand_operator_macros(&rule.operator_spec.argument);
-            dynamic_operator = compile_operator(&OperatorSpec {
+            match compile_operator(&OperatorSpec {
                 negated: rule.operator_spec.negated,
                 name: rule.operator_spec.name,
                 argument: expanded,
-            })?;
-            dynamic_operator.as_ref()
+            }) {
+                Ok(compiled) => {
+                    dynamic_operator = compiled;
+                    dynamic_operator.as_ref()
+                }
+                // An expanded argument can come from the request
+                // (`@rx %{request_headers.x}`), so it may not compile.
+                // ModSecurity v3 treats that as neither a match nor a
+                // mismatch: the rule does not fire, negated or not, and
+                // evaluation goes on (operators/rx.cc,
+                // owasp-modsecurity/ModSecurity#3123). Returning the error
+                // instead would end the phase, and the rules after this one,
+                // the blocking evaluation among them, would never run.
+                Err(err) => {
+                    tracing::debug!(
+                        rule_id = rule.id.as_deref().unwrap_or("-"),
+                        error = %err,
+                        "expanded operator argument does not compile; the rule does not match"
+                    );
+                    return Ok(RuleOutcome::no_match());
+                }
+            }
         } else {
             rule.operator.as_ref()
         };

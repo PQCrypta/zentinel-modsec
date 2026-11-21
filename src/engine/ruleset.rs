@@ -268,6 +268,21 @@ impl CompiledRuleset {
                         // so `!@gt %{env.x}` matched, and it still does.
                         let never: Arc<dyn Operator> = Arc::new(NoMatchOperator);
                         (never, rule.operator.negated)
+                    } else if rule.operator.argument.contains("%{") {
+                        // The argument is expanded and compiled again for
+                        // every evaluation, so what it compiles to here is
+                        // never used. As written (`@rx %{tx.x}`) it is often
+                        // not a valid pattern; reporting that, or dropping the
+                        // negation as an invalid fixed pattern does below,
+                        // would turn `!@rx %{...}` into `@rx %{...}`.
+                        let placeholder = compile_operator(&rule.operator).or_else(|_| {
+                            compile_operator(&OperatorSpec {
+                                negated: false,
+                                name: OperatorName::NoMatch,
+                                argument: String::new(),
+                            })
+                        })?;
+                        (placeholder, rule.operator.negated)
                     } else {
                         compile_operator_reporting(&rule.operator, &id)?
                     };
