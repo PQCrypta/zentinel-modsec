@@ -45,6 +45,10 @@ pub struct CompiledRule {
     /// Collected at load time: once a `ctl:ruleRemoveTargetByTag` has fired,
     /// every rule evaluated after it is asked for its tags.
     pub tags: Vec<String>,
+    /// Whether the operator runs at every stage of the transformation
+    /// pipeline (`multiMatch`), not only on the transformed value. Collected
+    /// at load time with the tags.
+    pub multi_match: bool,
     /// Where a match of this rule resumes when its last flow action is
     /// `skipAfter`: the marker's position in the rule's phase, or `None` for a
     /// marker that does not exist. Resolved once every marker is known, so a
@@ -279,6 +283,7 @@ impl CompiledRuleset {
                         operator_spec,
                         transformations,
                         tags: extract_tags(&rule.actions),
+                        multi_match: has_multi_match(&rule.actions),
                         skip_after_index: None,
                         on_match: execute_actions_without_metadata(&rule.actions, None),
                         actions: rule.actions,
@@ -333,6 +338,7 @@ impl CompiledRuleset {
                         operator_spec,
                         transformations,
                         tags: extract_tags(&sec_action.actions),
+                        multi_match: has_multi_match(&sec_action.actions),
                         skip_after_index: None,
                         on_match: execute_actions_without_metadata(&sec_action.actions, None),
                         actions: sec_action.actions,
@@ -392,6 +398,13 @@ impl Default for CompiledRuleset {
 }
 
 /// The `tag:` values of a rule's actions, in order.
+/// Whether the actions include `multiMatch`.
+fn has_multi_match(actions: &[Action]) -> bool {
+    actions
+        .iter()
+        .any(|a| matches!(a, Action::Flow(crate::parser::FlowAction::MultiMatch)))
+}
+
 fn extract_tags(actions: &[Action]) -> Vec<String> {
     actions
         .iter()
