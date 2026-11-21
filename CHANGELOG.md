@@ -9,6 +9,31 @@ pins (see [`docs/conformance.md`](docs/conformance.md)).
 
 ## [Unreleased]
 
+### Behavior changes
+
+- **Regex key selections fold ASCII only and match keys as bytes**, as
+  ModSecurity v3 compiles them (PCRE caseless, without UTF): `!ARGS:/^session/`
+  still leaves `SESSION`, and no longer leaves `ſession` (U+017F). `\w`, `\d`
+  and `.` are ASCII and single bytes there too.
+
+### Performance
+
+- A regex selection or exclusion (`ARGS:/^user/`, `!REQUEST_COOKIES:/__utm/`)
+  is compiled once, as the rule is read, and one compiled program serves every
+  rule and thread naming it. `cached_regex` handed out a clone per use, and a
+  cloned `Regex` starts with an empty cache pool, so each match allocated the
+  matcher's scratch space again: once per cookie for each CRS rule excluding
+  `/__utm/`, and once per argument for each regex exclusion.
+
+### API changes
+
+- `Selection::Regex` holds a `KeyRegex` (compiled), not the pattern text;
+  `KeyRegex::as_str` gives the text.
+- `VariableSpec::exclusions` is a `Vec<TargetExclusion>` (parsed), not
+  `Vec<String>`; `TargetExclusion::text` gives the text.
+- `Collection::get_regex`, `HashMapCollection::iter_regex` and
+  `TxCollection::iter_regex` take a `&KeyRegex`.
+
 ## [0.9.0] - 2026-11-21
 
 No change to what rules match. `CompiledRule` gains two public fields
