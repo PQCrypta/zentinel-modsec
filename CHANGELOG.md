@@ -9,6 +9,12 @@ pins (see [`docs/conformance.md`](docs/conformance.md)).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-21
+
+No change to what rules match. `CompiledRule` gains two public fields
+(`tags`, `skip_after_index`), which breaks code that builds one with a struct
+literal; hence the minor version.
+
 ### Performance
 
 - Rule targets and `%{...}` macros read collections in place:
@@ -187,7 +193,8 @@ upgrading.
 0.1.2 through 0.6.0 are tagged in Git (`v0.1.2` ... `v0.6.0`); see the tags
 and the commit history for what each contains.
 
-[Unreleased]: https://github.com/zentinelproxy/zentinel-modsec/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/zentinelproxy/zentinel-modsec/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/zentinelproxy/zentinel-modsec/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/zentinelproxy/zentinel-modsec/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/zentinelproxy/zentinel-modsec/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/zentinelproxy/zentinel-modsec/compare/v0.6.0...v0.7.0
