@@ -76,6 +76,15 @@ impl TargetExclusion {
             (Some(ExcludedMember::Regex(re)), Some(key)) => re.is_match(key),
         }
     }
+
+    /// The expression that selects the members it leaves out, for an
+    /// exclusion written `COLLECTION:/regex/`.
+    pub fn key_regex(&self) -> Option<&KeyRegex> {
+        match &self.member {
+            Some(ExcludedMember::Regex(re)) => Some(re),
+            _ => None,
+        }
+    }
 }
 
 /// Selection mode for collection variables.
